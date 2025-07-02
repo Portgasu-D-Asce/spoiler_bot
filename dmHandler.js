@@ -1,43 +1,35 @@
-// dm_handler.js
 const fs = require('fs');
 const path = require('path');
+const handleFileDrop = require('./fileDropHandler');
 
 module.exports = async function handleDM(message) {
   const username = message.author.username;
-  const userId = message.author.id;
   const tag = message.author.tag;
   const content = message.content;
   const timestamp = new Date().toISOString();
 
-  const dateStr = new Date().toISOString().split('T')[0];
-  const logFileName = `dm_logs_${dateStr}.log`;
+  const dateStr = timestamp.split('T')[0];
   const logDir = path.join(__dirname, 'logs');
-
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir);
-  }
-
+  const logFileName = `dm_logs_${dateStr}.log`;
   const logPath = path.join(logDir, logFileName);
+  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
 
   try {
-    await message.reply(`Hey ${username} 👋\nUse  !a <message>  to send an anonymous message in the server.\nThis is a DM, so your identity is safe.`);
+    if (content.startsWith('!af')) {
+      return await handleFileDrop(message);
+    }
 
-    const successLog = `[${timestamp}] SUCCESS:
-User: ${tag} (ID: ${userId})
+    await message.reply(`Hey ${username} 👋\nUse \`!a <msg>\` to send anonymous messages.\nUse \`!af <channel_id> [optional caption]\` and attach a file to drop anonymously.`);
+    
+    const log = `[${timestamp}] DM SUCCESS:
+User: ${tag}
 Message: ${content}\n\n`;
-
-    fs.appendFile(logPath, successLog, (fsErr) => {
-      if (fsErr) console.error('Failed to write success log:', fsErr);
-    });
-
+    fs.appendFile(logPath, log, err => err && console.error('Log error:', err));
   } catch (err) {
     const errorLog = `[${timestamp}] ERROR:
-User: ${tag} (ID: ${userId})
+User: ${tag}
 Message: ${content}
 Error: ${err.stack}\n\n`;
-
-    fs.appendFile(logPath, errorLog, (fsErr) => {
-      if (fsErr) console.error('Failed to write error log:', fsErr);
-    });
+    fs.appendFile(logPath, errorLog, fsErr => fsErr && console.error('Failed to write error log:', fsErr));
   }
 };
